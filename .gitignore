@@ -80,6 +80,9 @@ DerivedDataCache/*
 # Visual Studio Code
 .vscode/
 
+# Claude Code per-machine local permissions (auto-saved narrow grants)
+.claude/settings.local.json
+
 # Backup files
 *.backup
 *.bak
