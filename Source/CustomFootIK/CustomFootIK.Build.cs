@@ -24,20 +24,7 @@ public class CustomFootIK : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
 		PublicIncludePaths.AddRange(new string[] {
-			"CustomFootIK",
-			"CustomFootIK/Variant_Platforming",
-			"CustomFootIK/Variant_Platforming/Animation",
-			"CustomFootIK/Variant_Combat",
-			"CustomFootIK/Variant_Combat/AI",
-			"CustomFootIK/Variant_Combat/Animation",
-			"CustomFootIK/Variant_Combat/Gameplay",
-			"CustomFootIK/Variant_Combat/Interfaces",
-			"CustomFootIK/Variant_Combat/UI",
-			"CustomFootIK/Variant_SideScrolling",
-			"CustomFootIK/Variant_SideScrolling/AI",
-			"CustomFootIK/Variant_SideScrolling/Gameplay",
-			"CustomFootIK/Variant_SideScrolling/Interfaces",
-			"CustomFootIK/Variant_SideScrolling/UI"
+			"CustomFootIK"
 		});
 
 		// Uncomment if you are using Slate UI
