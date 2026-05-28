@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foot Placement — Implementation Reference</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #fbfaf6;
+  --surface: #ffffff;
+  --fg: #1f1f1f;
+  --muted: #6a6a6a;
+  --accent: #5b3eaa;
+  --accent-soft: #efeaff;
+  --rule: #e6e2d8;
+  --code-bg: #f4f0e6;
+  --code-fg: #2d2438;
+  --table-head: #efeaff;
+  --shadow: 0 1px 2px rgba(20, 20, 20, .05), 0 4px 12px rgba(20, 20, 20, .04);
+
+  --label-verified-bg: #e6f4ea; --label-verified-fg: #1e6f3c;
+  --label-inferred-bg: #efeaff; --label-inferred-fg: #5b3eaa;
+  --label-caution-bg:  #fdecd6; --label-caution-fg:  #9a5b00;
+  --label-extend-bg:   #def4f1; --label-extend-fg:   #186b62;
+
+  --callout-verify-bg: #f0f9f3; --callout-verify-bd: #4caf72;
+  --callout-caution-bg:#fff5e6; --callout-caution-bd:#e89000;
+  --callout-extend-bg: #ecf7f5; --callout-extend-bd: #2aa395;
+  --callout-note-bg:   #f4f4f4; --callout-note-bd:   #999;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14141a;
+    --surface: #1c1c25;
+    --fg: #e8e6e0;
+    --muted: #9a98a3;
+    --accent: #c3b3ff;
+    --accent-soft: #2a2440;
+    --rule: #2c2a35;
+    --code-bg: #1a1923;
+    --code-fg: #d8d3ee;
+    --table-head: #2a2440;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 12px rgba(0, 0, 0, .25);
+
+    --label-verified-bg: #1d3a26; --label-verified-fg: #9ad8b1;
+    --label-inferred-bg: #2a2247; --label-inferred-fg: #d2c2ff;
+    --label-caution-bg:  #3a2a13; --label-caution-fg:  #f3c181;
+    --label-extend-bg:   #14322f; --label-extend-fg:   #88d6cb;
+
+    --callout-verify-bg: #18261d; --callout-verify-bd: #4caf72;
+    --callout-caution-bg:#2a1f10; --callout-caution-bd:#e89000;
+    --callout-extend-bg: #142624; --callout-extend-bd: #2aa395;
+    --callout-note-bg:   #1f1e26; --callout-note-bd:   #777;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+body {
+  font-family: "Pretendard", "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 0;
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 32px;
+}
+.sidebar {
+  position: sticky;
+  top: 32px;
+  align-self: start;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding-right: 24px;
+  border-right: 1px solid var(--rule);
+}
+.sidebar h2 {
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 0 0 .6em;
+  border: none;
+  padding: 0;
+}
+.sidebar .doc-nav { list-style: none; padding: 0; margin: 0 0 28px; }
+.sidebar .doc-nav li { margin: 0; }
+.sidebar .doc-nav a {
+  display: block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--fg);
+  text-decoration: none;
+  border: 1px solid transparent;
+  font-size: .92rem;
+}
+.sidebar .doc-nav a:hover { background: var(--accent-soft); }
+.sidebar .doc-nav a.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.sidebar .doc-nav .sub {
+  display: block;
+  font-size: .76rem;
+  color: var(--muted);
+  font-weight: normal;
+  margin-top: 2px;
+}
+
+.sidebar .toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-left: 2px solid var(--rule);
+}
+.sidebar .toc-list li { margin: 0; }
+.sidebar .toc-list a {
+  display: block;
+  padding: 4px 12px;
+  margin-left: -2px;
+  border-left: 2px solid transparent;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: .88rem;
+  line-height: 1.4;
+}
+.sidebar .toc-list a:hover { color: var(--accent); }
+.sidebar .toc-list a.toc-h3 { padding-left: 26px; font-size: .82rem; }
+
+main { padding: 0 0 96px 40px; min-width: 0; }
+
+h1, h2, h3, h4 {
+  color: var(--fg);
+  line-height: 1.3;
+  margin: 1.8em 0 .5em;
+  font-weight: 700;
+}
+h1 { font-size: 2.0rem; margin-top: 0; padding-bottom: .35em; border-bottom: 2px solid var(--accent); }
+h2 { font-size: 1.5rem; padding-bottom: .25em; border-bottom: 1px solid var(--rule); scroll-margin-top: 24px; }
+h3 { font-size: 1.15rem; color: var(--accent); scroll-margin-top: 24px; }
+h4 { font-size: 1.02rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+p { margin: .8em 0; }
+ul, ol { padding-left: 1.5em; }
+li { margin: .2em 0; }
+
+a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed currentColor; }
+a:hover { border-bottom-style: solid; }
+
+hr { border: none; border-top: 1px solid var(--rule); margin: 2em 0; }
+
+blockquote {
+  margin: 1.2em 0;
+  padding: .8em 1.2em;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--fg);
+  border-radius: 0 6px 6px 0;
+}
+blockquote p:first-child { margin-top: 0; }
+blockquote p:last-child  { margin-bottom: 0; }
+
+code {
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, "SF Mono", Menlo, monospace;
+  font-size: .92em;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: .12em .4em;
+  border-radius: 4px;
+}
+pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 14px 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: .88rem;
+  line-height: 1.55;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--rule);
+}
+pre code { background: transparent; padding: 0; font-size: inherit; color: inherit; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2em 0;
+  font-size: .92rem;
+  box-shadow: var(--shadow);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+}
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+th { background: var(--table-head); font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+
+.label {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 0 2px;
+  border-radius: 999px;
+  font-size: .76em;
+  font-weight: 600;
+  line-height: 1.55;
+  vertical-align: 1px;
+  user-select: none;
+  white-space: nowrap;
+}
+.label-verified { background: var(--label-verified-bg); color: var(--label-verified-fg); }
+.label-inferred { background: var(--label-inferred-bg); color: var(--label-inferred-fg); }
+.label-caution  { background: var(--label-caution-bg);  color: var(--label-caution-fg); }
+.label-extend   { background: var(--label-extend-bg);   color: var(--label-extend-fg); }
+
+.callout {
+  margin: 1.3em 0;
+  padding: 14px 18px 6px 18px;
+  border-left: 4px solid var(--callout-note-bd);
+  background: var(--callout-note-bg);
+  border-radius: 0 8px 8px 0;
+}
+.callout-title {
+  font-weight: 700;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin: 0 0 6px;
+  color: var(--callout-note-bd);
+}
+.callout-verify  { border-left-color: var(--callout-verify-bd);  background: var(--callout-verify-bg); }
+.callout-verify  .callout-title  { color: var(--callout-verify-bd); }
+.callout-caution { border-left-color: var(--callout-caution-bd); background: var(--callout-caution-bg); }
+.callout-caution .callout-title { color: var(--callout-caution-bd); }
+.callout-extend  { border-left-color: var(--callout-extend-bd);  background: var(--callout-extend-bg); }
+.callout-extend  .callout-title  { color: var(--callout-extend-bd); }
+.callout-note    { border-left-color: var(--callout-note-bd);    background: var(--callout-note-bg); }
+.callout p:first-child { margin-top: 0; }
+.callout p:last-child  { margin-bottom: .8em; }
+
+.mermaid-wrap {
+  margin: 1.4em 0;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+  text-align: center;
+}
+.mermaid { line-height: 1.4; }
+
+h2 .anchor, h3 .anchor, h4 .anchor {
+  color: var(--muted);
+  margin-left: .35em;
+  font-weight: normal;
+  opacity: 0;
+  transition: opacity .15s;
+  text-decoration: none;
+  border: none;
+  font-size: .75em;
+}
+h2:hover .anchor, h3:hover .anchor, h4:hover .anchor { opacity: 1; }
+
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: 1fr; padding: 16px; }
+  .sidebar { position: relative; top: 0; max-height: none; border-right: none; border-bottom: 1px solid var(--rule); padding-right: 0; padding-bottom: 16px; margin-bottom: 16px; }
+  main { padding-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <h2>문서 세트</h2>
+    <ul class="doc-nav">
+      <li><a class="" href="FootPlacement_Learning.html">Learning<span class="sub">Mental model first</span></a></li>
+<li><a class="active" href="FootPlacement_ImplementationReference.html">Implementation Reference<span class="sub">Measured SSOT</span></a></li>
+<li><a class="" href="FootPlacement_Troubleshooting.html">Troubleshooting<span class="sub">Fixes & extensions</span></a></li>
+    </ul>
+    <h2>이 문서 목차</h2>
+    <ul class="toc-list">
+<li><a class="toc-h2" href="#1-에셋코드-의존-관계">1. 에셋·코드 의존 관계</a></li>
+<li><a class="toc-h2" href="#2-mage_skeleton">2. Mage_Skeleton</a></li>
+<li><a class="toc-h3" href="#21-가상-본-virtual-bones">2.1 가상 본 (Virtual Bones)</a></li>
+<li><a class="toc-h2" href="#3-abp_mage-animgraph">3. ABP_Mage — AnimGraph</a></li>
+<li><a class="toc-h3" href="#31-기본-정보">3.1 기본 정보</a></li>
+<li><a class="toc-h3" href="#32-animgraph-노드">3.2 AnimGraph 노드</a></li>
+<li><a class="toc-h3" href="#33-활성-pose-경로-연결">3.3 활성 pose 경로 연결</a></li>
+<li><a class="toc-h3" href="#34-비활성-확장-경로-연결">3.4 비활성 확장 경로 연결</a></li>
+<li><a class="toc-h3" href="#35-변수">3.5 변수</a></li>
+<li><a class="toc-h2" href="#4-abp_mage-eventgraph-현재-미실행">4. ABP_Mage — EventGraph (현재 미실행)</a></li>
+<li><a class="toc-h3" href="#41-노드-총-10">4.1 노드 (총 10)</a></li>
+<li><a class="toc-h3" href="#42-연결도">4.2 연결도</a></li>
+<li><a class="toc-h3" href="#43-실행-시-가정-분기-참고">4.3 실행 시 가정 분기 (참고)</a></li>
+<li><a class="toc-h2" href="#5-idle_b-animation-sequence">5. Idle_B (Animation Sequence)</a></li>
+<li><a class="toc-h2" href="#6-cr_mage_footik-control-rig">6. CR_Mage_FootIK — Control Rig</a></li>
+<li><a class="toc-h3" href="#61-기본-정보">6.1 기본 정보</a></li>
+<li><a class="toc-h3" href="#62-blueprint-변수-6">6.2 Blueprint 변수 (6)</a></li>
+<li><a class="toc-h3" href="#63-루트-그래프-rig">6.3 루트 그래프 (Rig)</a></li>
+<li><a class="toc-h3" href="#64-함수-그래프-foottrace-11-노드">6.4 함수 그래프 FootTrace (11 노드)</a></li>
+<li><a class="toc-h3" href="#65-노드-인벤토리-루트-그래프-36-노드">6.5 노드 인벤토리 (루트 그래프 36 노드)</a></li>
+<li><a class="toc-h2" href="#7-ik_mage-ik-rig-현재-비활성">7. IK_Mage — IK Rig (현재 비활성)</a></li>
+<li><a class="toc-h2" href="#8-분석-메서드-재현용">8. 분석 메서드 (재현용)</a></li>
+<li><a class="toc-h2" href="#9-용어">9. 용어</a></li>
+</ul>
+  </aside>
+  <main>
+    <h1>Foot Placement — Implementation Reference</h1>
+<blockquote>
+<p><strong>이 문서의 위치 (Diataxis: reference)</strong>
+- 학습은 <code>FootPlacement_Learning.md</code> 로
+- 결함·해결책·확장 과제는 <code>FootPlacement_Troubleshooting.md</code> 로
+- 본 문서는 <strong>Monolith MCP 로 직접 측정한 구현 사실의 단일 진실 공급원(SSOT)</strong> 이다. 평가/제안 없이 측정값과 노드/핀/링크/파라미터만 담는다.</p>
+<p>분석 대상
+- <code>Content/CustomFootIK/ABP_Mage.uasset</code> (Anim Blueprint)
+- <code>Content/Characters/Mage/Rigs/CR_Mage_FootIK.uasset</code> (Control Rig)
+- <code>Content/Characters/Mage/Rigs/IK_Mage.uasset</code> (IK Rig)
+- 의존 에셋: <code>Mage_Skeleton</code>, <code>Mage</code> (Skeletal Mesh), <code>Idle_B</code> (Animation Sequence)</p>
+<p>분석 도구: Monolith MCP (<code>animation_query</code>, <code>blueprint_query</code>) — UE 5.7.0 / Monolith v0.16.0
+최초 작성: 2026-05-28 / 최신 갱신: 2026-05-28</p>
+</blockquote>
+<hr>
+<h2 id="1-에셋코드-의존-관계">1. 에셋·코드 의존 관계 <a class="anchor" href="#1-에셋코드-의존-관계">#</a></h2>
+<pre><code>ACustomFootIKCharacter (C++, abstract)
+        ▲
+        │  Blueprint 상속
+BP_Mage (Content/CustomFootIK)
+        ├─ 블루프린트 자체 컴포넌트: 0
+        └─ 상속 네이티브 컴포넌트 6
+              ├─ CollisionCylinder  (UCapsuleComponent, root)
+              ├─ Arrow              (UArrowComponent,   parent=CollisionCylinder)
+              ├─ CharMoveComp       (UCharacterMovementComponent)
+              ├─ CharacterMesh0     (USkeletalMeshComponent, parent=CollisionCylinder)
+              │     ├─ SkeletalMesh: Mage
+              │     └─ AnimClass:    ABP_Mage
+              │                          ├─ Skeleton:    Mage_Skeleton    ← 가상 본 3개 포함
+              │                          ├─ AnimGraph:   §3 참고
+              │                          ├─ EventGraph:  §4 참고 (현재 데드)
+              │                          ├─ Control Rig: CR_Mage_FootIK   (§6)
+              │                          └─ Variables:   FootLOffset, FootROffset (Vector, 미사용)
+              ├─ CameraBoom         (USpringArmComponent, parent=CollisionCylinder)
+              └─ FollowCamera       (UCameraComponent,    parent=CameraBoom)
+</code></pre>
+<p>C++ 캐릭터(<code>ACustomFootIKCharacter</code>) 는 카메라·입력만 다루며 <strong>Foot IK 관련 데이터를 ABP 에 푸시하는 경로가 없다.</strong></p>
+<hr>
+<h2 id="2-mage_skeleton">2. Mage_Skeleton <a class="anchor" href="#2-mage_skeleton">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>실제 본</td>
+<td>23</td>
+</tr>
+<tr>
+<td>가상 본</td>
+<td>3</td>
+</tr>
+<tr>
+<td>합계</td>
+<td>26</td>
+</tr>
+</tbody>
+</table>
+<h3 id="21-가상-본-virtual-bones">2.1 가상 본 (Virtual Bones) <a class="anchor" href="#21-가상-본-virtual-bones">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>source</th>
+<th>target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VB Foot_Root</code></td>
+<td><code>root</code></td>
+<td><code>root</code></td>
+</tr>
+<tr>
+<td><code>VB Foot_R</code></td>
+<td><code>VB Foot_Root</code></td>
+<td><code>foot_r</code></td>
+</tr>
+<tr>
+<td><code>VB Foot_L</code></td>
+<td><code>VB Foot_Root</code></td>
+<td><code>foot_l</code></td>
+</tr>
+</tbody>
+</table>
+<p>가상 본 의미·도입 이유는 <code>FootPlacement_Learning.md</code> §3 참고. 본 문서는 “3 개가 존재한다” 까지만 사실로 기록.</p>
+<hr>
+<h2 id="3-abp_mage-animgraph">3. ABP_Mage — AnimGraph <a class="anchor" href="#3-abp_mage-animgraph">#</a></h2>
+<h3 id="31-기본-정보">3.1 기본 정보 <a class="anchor" href="#31-기본-정보">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Skeleton</td>
+<td><code>Mage_Skeleton</code></td>
+</tr>
+<tr>
+<td>Parent Class</td>
+<td><code>AnimInstance</code></td>
+</tr>
+<tr>
+<td>Graph 수</td>
+<td>2 (<code>AnimGraph</code>, <code>EventGraph</code>)</td>
+</tr>
+<tr>
+<td>Variable 수</td>
+<td>2 (<code>FootLOffset:Vector</code>, <code>FootROffset:Vector</code>)</td>
+</tr>
+<tr>
+<td>State Machine 수</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Sequence 의존</td>
+<td><code>Idle_B</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-animgraph-노드">3.2 AnimGraph 노드 <a class="anchor" href="#32-animgraph-노드">#</a></h3>
+<p><code>blueprint_query / get_graph_data</code> 기준으로 <strong>전체 6 노드</strong>. 평가되는 pose 경로(3 노드)와 미평가 확장 경로(3 노드)로 구분된다.</p>
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>노드</th>
+<th>클래스</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>활성 pose 경로</td>
+<td><code>AnimGraphNode_SequencePlayer_0</code> (<code>Idle_B</code>)</td>
+<td><code>AnimGraphNode_SequencePlayer</code></td>
+</tr>
+<tr>
+<td>활성 pose 경로</td>
+<td><code>AnimGraphNode_ControlRig_0</code></td>
+<td><code>AnimGraphNode_ControlRig</code></td>
+</tr>
+<tr>
+<td>활성 pose 경로</td>
+<td><code>AnimGraphNode_Root_0</code> (<code>Output Pose</code>)</td>
+<td><code>AnimGraphNode_Root</code></td>
+</tr>
+<tr>
+<td>비활성 확장</td>
+<td><code>AnimGraphNode_IKRig_0</code></td>
+<td><code>AnimGraphNode_IKRig</code></td>
+</tr>
+<tr>
+<td>비활성 확장</td>
+<td><code>K2Node_VariableGet_0</code> (<code>Get FootROffset</code>)</td>
+<td><code>K2Node_VariableGet</code></td>
+</tr>
+<tr>
+<td>비활성 확장</td>
+<td><code>K2Node_VariableGet_1</code> (<code>Get FootLOffset</code>)</td>
+<td><code>K2Node_VariableGet</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-활성-pose-경로-연결">3.3 활성 pose 경로 연결 <a class="anchor" href="#33-활성-pose-경로-연결">#</a></h3>
+<pre><code>SequencePlayer(Idle_B).Pose ──► ControlRig.Source
+                              (ControlRig.Pose) ──► Root.Result
+</code></pre>
+<p><code>ControlRig</code> 노드 핀:
+| 핀               | 방향   | 값/연결                       |
+|------------------|--------|-------------------------------|
+| <code>Source</code>         | input  | <code>SequencePlayer.Pose</code>         |
+| <code>Alpha</code>          | input  | <code>1.000000</code> (상수)             |
+| <code>ShouldDoIKTrace</code>| input  | <code>true</code> (상수, 미연결)         |
+| <code>Pose</code>           | output | <code>Root.Result</code>                 |</p>
+<h3 id="34-비활성-확장-경로-연결">3.4 비활성 확장 경로 연결 <a class="anchor" href="#34-비활성-확장-경로-연결">#</a></h3>
+<pre><code>                       (Source/Pose 미연결 — 이 노드는 평가되지 않음)
+IKRig.Source     ─ 미연결
+IKRig.Pose       ─ 미연결
+IKRig.Alpha      = 1.000000 (상수)
+IKRig.Position_foot_r_Goal       ◄── (Get) FootROffset
+IKRig.PositionAlpha_foot_r_Goal  = 1.0
+IKRig.Position_foot_l_Goal       ◄── (Get) FootLOffset
+IKRig.PositionAlpha_foot_l_Goal  = 1.0
+</code></pre>
+<p><code>IKRig</code> 노드의 IK Rig 에셋 참조는 <code>IK_Mage</code> (§7).</p>
+<h3 id="35-변수">3.5 변수 <a class="anchor" href="#35-변수">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>기본값</th>
+<th>사용 위치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FootLOffset</code></td>
+<td>Vector</td>
+<td>(0,0,0)</td>
+<td>AnimGraph: <code>IKRig.Position_foot_l_Goal</code> / EventGraph: 5개의 Setter (§4)</td>
+</tr>
+<tr>
+<td><code>FootROffset</code></td>
+<td>Vector</td>
+<td>(0,0,0)</td>
+<td>AnimGraph: <code>IKRig.Position_foot_r_Goal</code> / EventGraph: 5개의 Setter (§4)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="4-abp_mage-eventgraph-현재-미실행">4. ABP_Mage — EventGraph (현재 미실행) <a class="anchor" href="#4-abp_mage-eventgraph-현재-미실행">#</a></h2>
+<blockquote>
+<p><strong>사실 정정 메모</strong> — 이 그래프는 “비어 있지 않다”. <strong>10 개 노드</strong> 가 존재하며, <code>BlueprintUpdateAnimation</code> 의 <code>then</code> 실행 핀이 <code>Branch.execute</code> 에 <strong>연결되지 않아 전체 체인이 런타임에서 실행되지 않을 뿐</strong>이다.</p>
+</blockquote>
+<h3 id="41-노드-총-10">4.1 노드 (총 10) <a class="anchor" href="#41-노드-총-10">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>클래스</th>
+<th>제목/함수</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>K2Node_Event_0</code></td>
+<td><code>K2Node_Event</code></td>
+<td><code>Event Blueprint Update Animation</code></td>
+</tr>
+<tr>
+<td><code>K2Node_CallFunction_5</code></td>
+<td><code>K2Node_CallFunction</code></td>
+<td><code>Try Get Pawn Owner</code> (Target: AnimInstance)</td>
+</tr>
+<tr>
+<td><code>K2Node_CallFunction_1</code></td>
+<td><code>K2Node_CallFunction</code></td>
+<td><code>Get Movement Component</code> (Target: Pawn)</td>
+</tr>
+<tr>
+<td><code>K2Node_CallFunction_2</code></td>
+<td><code>K2Node_CallFunction</code></td>
+<td><code>Is Falling</code> (Target: NavMovementInterface)</td>
+</tr>
+<tr>
+<td><code>K2Node_CallFunction_3</code></td>
+<td><code>K2Node_CallFunction</code></td>
+<td><code>NOT Boolean</code> (<code>KismetMathLibrary::Not_PreBool</code>)</td>
+</tr>
+<tr>
+<td><code>K2Node_IfThenElse_0</code></td>
+<td><code>K2Node_IfThenElse</code></td>
+<td><code>Branch</code></td>
+</tr>
+<tr>
+<td><code>K2Node_VariableSet_0</code></td>
+<td><code>K2Node_VariableSet</code></td>
+<td><code>Set FootLOffset</code> (Vector 형, Value=(0,0,0))</td>
+</tr>
+<tr>
+<td><code>K2Node_VariableSet_1</code></td>
+<td><code>K2Node_VariableSet</code></td>
+<td><code>Set FootROffset</code> (Vector 형, Value=(0,0,0))</td>
+</tr>
+<tr>
+<td><code>K2Node_VariableSet_2</code></td>
+<td><code>K2Node_VariableSet</code></td>
+<td><code>Set FootROffset_X/Y/Z</code> (분해형, 모두 0)</td>
+</tr>
+<tr>
+<td><code>K2Node_VariableSet_3</code></td>
+<td><code>K2Node_VariableSet</code></td>
+<td><code>Set FootLOffset_X/Y/Z</code> (분해형, X=0/Y=0/<strong>Z=20</strong>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-연결도">4.2 연결도 <a class="anchor" href="#42-연결도">#</a></h3>
+<pre><code>[Event BlueprintUpdateAnimation]
+   .then    ─ ❌ 미연결 (이것이 데드 체인의 원인)
+   .DeltaTimeX ─ 미사용
+
+[Try Get Pawn Owner] ──ReturnValue──► [Get Movement Component].self
+                                       │
+                                       └─ReturnValue──► [Is Falling].self
+                                                          │
+                                                          └─ReturnValue──► [NOT Boolean].A
+                                                                              │
+                                                                              └─ReturnValue──► [Branch].Condition
+
+[Branch]
+   .execute  ─ ❌ 미연결
+   .then     ──► [Set FootROffset_X/Y/Z (0,0,0)]──► [Set FootLOffset_X/Y/Z (0,0,20)]
+   .else     ──► [Set FootLOffset Vec (0,0,0)]   ──► [Set FootROffset Vec (0,0,0)]
+</code></pre>
+<h3 id="43-실행-시-가정-분기-참고">4.3 실행 시 가정 분기 (참고) <a class="anchor" href="#43-실행-시-가정-분기-참고">#</a></h3>
+<p><code>Branch.execute</code> 가 연결되었다고 가정한 분기 동작:</p>
+<table>
+<thead>
+<tr>
+<th>Condition (<code>NOT IsFalling</code>)</th>
+<th>의미</th>
+<th>then/else</th>
+<th>실제 수행</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>true</code></td>
+<td>지상</td>
+<td><code>then</code></td>
+<td><code>FootROffset = (0,0,0)</code>, <code>FootLOffset = (0,0,20)</code></td>
+</tr>
+<tr>
+<td><code>false</code></td>
+<td>공중</td>
+<td><code>else</code></td>
+<td><code>FootLOffset = (0,0,0)</code>, <code>FootROffset = (0,0,0)</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>위 동작은 현재 실행되지 않는다. 결과/의도/검토는 <code>FootPlacement_Troubleshooting.md</code> §1 참고.</p>
+</blockquote>
+<hr>
+<h2 id="5-idle_b-animation-sequence">5. Idle_B (Animation Sequence) <a class="anchor" href="#5-idle_b-animation-sequence">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Skeleton</td>
+<td><code>Mage_Skeleton</code></td>
+</tr>
+<tr>
+<td>Duration</td>
+<td>2.1333334 s</td>
+</tr>
+<tr>
+<td>Num Frames</td>
+<td>64</td>
+</tr>
+<tr>
+<td>Num Keys</td>
+<td>65</td>
+</tr>
+<tr>
+<td>Sample / Frame Rate</td>
+<td>30 fps</td>
+</tr>
+<tr>
+<td>Is Looping</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td>Has Root Motion</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td>Force Root Lock</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td>Root Motion Lock</td>
+<td><code>RefPose</code></td>
+</tr>
+<tr>
+<td>Additive Type</td>
+<td><code>None</code></td>
+</tr>
+<tr>
+<td>Interpolation</td>
+<td><code>Linear</code></td>
+</tr>
+<tr>
+<td>Rate Scale</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>Compression</td>
+<td><code>Default</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="6-cr_mage_footik-control-rig">6. CR_Mage_FootIK — Control Rig <a class="anchor" href="#6-cr_mage_footik-control-rig">#</a></h2>
+<h3 id="61-기본-정보">6.1 기본 정보 <a class="anchor" href="#61-기본-정보">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Parent Class</td>
+<td><code>ControlRig</code></td>
+</tr>
+<tr>
+<td>전체 본</td>
+<td>26 (실제 23 + 가상 3)</td>
+</tr>
+<tr>
+<td>Animatable Control</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Null</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Curve</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Blueprint 함수</td>
+<td>1 (<code>FootTrace</code>)</td>
+</tr>
+<tr>
+<td>Blueprint 변수</td>
+<td>6</td>
+</tr>
+<tr>
+<td>그래프</td>
+<td>2 (<code>Rig</code>(root), <code>FootTrace</code>)</td>
+</tr>
+<tr>
+<td>루트 그래프 노드</td>
+<td>36</td>
+</tr>
+<tr>
+<td>루트 그래프 링크</td>
+<td>37</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-blueprint-변수-6">6.2 Blueprint 변수 (6) <a class="anchor" href="#62-blueprint-변수-6">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>이름</th>
+<th>타입</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ShouldDoIKTrace</code></td>
+<td>bool</td>
+<td>true 면 트레이스 수행, false 면 타깃 오프셋 0 리셋</td>
+</tr>
+<tr>
+<td><code>ZOffset_L_Target</code></td>
+<td>double</td>
+<td>좌측 발 트레이스 직후의 raw 목표 Z (보간 전)</td>
+</tr>
+<tr>
+<td><code>ZOffset_R_Target</code></td>
+<td>double</td>
+<td>우측 발 트레이스 직후의 raw 목표 Z (보간 전)</td>
+</tr>
+<tr>
+<td><code>ZOffset_L</code></td>
+<td>double</td>
+<td>보간된 좌측 발 Z 오프셋 (실제 적용 값)</td>
+</tr>
+<tr>
+<td><code>ZOffset_R</code></td>
+<td>double</td>
+<td>보간된 우측 발 Z 오프셋 (실제 적용 값)</td>
+</tr>
+<tr>
+<td><code>ZOffset_Pelvis</code></td>
+<td>double</td>
+<td>펠비스(hips) Z 오프셋 = min(ZOffset_L, ZOffset_R)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-루트-그래프-rig">6.3 루트 그래프 (<code>Rig</code>) <a class="anchor" href="#63-루트-그래프-rig">#</a></h3>
+<p><code>BeginExecution</code> → <code>SequenceExecution</code> 노드가 A/B/C/D 4 갈래를 순차 실행.</p>
+<pre><code>BeginExecution
+    │
+    ▼
+SequenceExecution
+    ├── A ──► Trace 분기 (ShouldDoIKTrace)
+    ├── B ──► AlphaInterp (Target → Smoothed)
+    ├── C ──► VB Foot_L/R + hips ModifyTransforms
+    └── D ──► PBIK 솔브
+</code></pre>
+<h4>단계 A — Trace 분기</h4>
+<pre><code>ShouldDoIKTrace (Variable Get)
+        │
+        ▼
+RigVMFunction_ControlFlowBranch
+   ├─ True  ─► FootTrace(VB Foot_L)─HitLocation.Z─► Set ZOffset_L_Target
+   │             │
+   │             └─► FootTrace(VB Foot_R)─HitLocation.Z─► Set ZOffset_R_Target
+   └─ False ─► Set ZOffset_L_Target (Value 핀 미연결 → 0)
+               Set ZOffset_R_Target (Value 핀 미연결 → 0)
+</code></pre>
+<p><code>FootTrace</code> 함수 본체는 §6.4.</p>
+<h4>단계 B — AlphaInterp 보간</h4>
+<p><code>RigVMFunction_AlphaInterp</code> 2 개. 좌/우 동일 파라미터.</p>
+<table>
+<thead>
+<tr>
+<th>파라미터</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Scale</code></td>
+<td>1.000000</td>
+</tr>
+<tr>
+<td><code>Bias</code></td>
+<td>0.000000</td>
+</tr>
+<tr>
+<td><code>bMapRange</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>InRange</code> / <code>OutRange</code></td>
+<td>(0, 1)</td>
+</tr>
+<tr>
+<td><code>bClampResult</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>ClampMin</code> / <code>ClampMax</code></td>
+<td>0 / 1</td>
+</tr>
+<tr>
+<td><code>bInterpResult</code></td>
+<td>true</td>
+</tr>
+<tr>
+<td><code>InterpSpeedIncreasing</code></td>
+<td>15.000000</td>
+</tr>
+<tr>
+<td><code>InterpSpeedDecreasing</code></td>
+<td>15.000000</td>
+</tr>
+</tbody>
+</table>
+<p>흐름:</p>
+<pre><code>Get ZOffset_L_Target ──► AlphaInterp   ──► Set ZOffset_L
+Get ZOffset_R_Target ──► AlphaInterp_1 ──► Set ZOffset_R
+</code></pre>
+<h4>단계 C — 가상 본 + 펠비스 변형</h4>
+<p><code>RigUnit_ModifyTransforms</code> 3 개. 모두 <code>Mode = AdditiveGlobal</code>.</p>
+<table>
+<thead>
+<tr>
+<th>ModifyTransforms</th>
+<th>Item (Bone)</th>
+<th>Translation.Z 입력</th>
+<th>Weight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ModifyTransforms</code></td>
+<td><code>VB Foot_L</code></td>
+<td><code>ZOffset_L</code> (Variable)</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><code>ModifyTransforms_1</code></td>
+<td><code>VB Foot_R</code></td>
+<td><code>ZOffset_R</code> (Variable)</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><code>ModifyTransforms_2</code></td>
+<td><code>hips</code></td>
+<td><code>ZOffset_Pelvis</code> (Variable)</td>
+<td>1.0</td>
+</tr>
+</tbody>
+</table>
+<p><code>ZOffset_Pelvis</code> 계산:</p>
+<pre><code>Get ZOffset_L ─► Less.A ┐
+Get ZOffset_R ─► Less.B ┴─► (L &lt; R) ─► If.Condition
+Get ZOffset_L ──────────────────────────► If.True
+Get ZOffset_R ──────────────────────────► If.False
+                                          If.Result ─► Set ZOffset_Pelvis
+</code></pre>
+<p>즉 <code>ZOffset_Pelvis = min(ZOffset_L, ZOffset_R)</code>.</p>
+<h4>단계 D — PBIK 솔브</h4>
+<p><code>RigUnit_PBIK</code> 1 개.</p>
+<table>
+<thead>
+<tr>
+<th>파라미터</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Root</code></td>
+<td><code>hips</code></td>
+</tr>
+<tr>
+<td><code>Iterations</code></td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>SubIterations</code></td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>MassMultiplier</code></td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><code>bAllowStretch</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>RootBehavior</code></td>
+<td><code>PinToInput</code></td>
+</tr>
+<tr>
+<td><code>MaxAngle</code></td>
+<td>30°</td>
+</tr>
+<tr>
+<td><code>OverRelaxation</code></td>
+<td>1.3</td>
+</tr>
+<tr>
+<td><code>GlobalPullChainAlpha</code></td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><code>PrePullRootSettings.RotationAlpha</code></td>
+<td>0.0</td>
+</tr>
+<tr>
+<td><code>PrePullRootSettings.PositionAlpha</code></td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><code>Debug.bDrawDebug</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>BoneSettings</code></td>
+<td>(없음)</td>
+</tr>
+<tr>
+<td><code>ExcludedBones</code></td>
+<td>(없음)</td>
+</tr>
+</tbody>
+</table>
+<p>Effectors:</p>
+<table>
+<thead>
+<tr>
+<th>Index</th>
+<th>Bone</th>
+<th>Transform (입력)</th>
+<th>PositionAlpha</th>
+<th>RotationAlpha</th>
+<th>StrengthAlpha</th>
+<th>ChainDepth</th>
+<th>PullChainAlpha</th>
+<th>PinRotation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>foot_l</code></td>
+<td><code>GetTransform(VB Foot_L, GlobalSpace)</code></td>
+<td>1.0</td>
+<td>1.0</td>
+<td>1.0</td>
+<td>0</td>
+<td>1.0</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>foot_r</code></td>
+<td><code>GetTransform(VB Foot_R, GlobalSpace)</code></td>
+<td>1.0</td>
+<td>1.0</td>
+<td>1.0</td>
+<td>0</td>
+<td>1.0</td>
+<td>1.0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="64-함수-그래프-foottrace-11-노드">6.4 함수 그래프 <code>FootTrace</code> (11 노드) <a class="anchor" href="#64-함수-그래프-foottrace-11-노드">#</a></h3>
+<h4>시그니처</h4>
+<table>
+<thead>
+<tr>
+<th>종류</th>
+<th>이름</th>
+<th>타입</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Input</td>
+<td><code>Item</code></td>
+<td><code>FRigElementKey</code></td>
+</tr>
+<tr>
+<td>Output</td>
+<td><code>HitLocation</code></td>
+<td><code>FVector</code></td>
+</tr>
+</tbody>
+</table>
+<h4>노드/연결</h4>
+<pre><code>Entry(Item)
+   ├─► Get Transform A
+   │       Item = (Bone) Entry.Item        ← 호출자가 넘긴 발 가상 본 (VB Foot_L/R)
+   │       Space = GlobalSpace
+   │       bInitial = false
+   │       .Translation ─► SphereTrace.Start
+   │
+   ├─ Get Transform B (Entry exec 와 분리, 순수 노드)
+   │       Item = (Bone) &quot;VB Foot_Root&quot;
+   │       Space = GlobalSpace
+   │       .Translation ─► SphereTrace.End
+   │
+   ├─ SphereTraceByTraceChannel
+   │       Start         ◄ Get Transform A.Translation
+   │       End           ◄ Get Transform B.Translation
+   │       TraceChannel  = TraceTypeQuery1
+   │       Radius        = 5.000000
+   │       HitLocation ─► Return.HitLocation
+   │
+   └─► Return(HitLocation)
+
+(디버그 분기 — 실행선 미연결, 비활성)
+   Break RigElementKey  ─► To String  ─► Concat ─► Print
+   Get Transform A.Translation ─► To String_1 ─► Concat.A
+   Get Transform B.Translation ─► To String_2 ─► Concat.C
+</code></pre>
+<p>Print 노드의 <code>ExecuteContext</code> 입력 핀은 <code>Entry → Return</code> 의 exec 라인에 연결되어 있지 않다 → <strong>실행되지 않는다.</strong></p>
+<h3 id="65-노드-인벤토리-루트-그래프-36-노드">6.5 노드 인벤토리 (루트 그래프 36 노드) <a class="anchor" href="#65-노드-인벤토리-루트-그래프-36-노드">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>클래스</th>
+<th>수</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RigVMUnitNode</code> (<code>RigUnit_*</code>)</td>
+<td>12</td>
+</tr>
+<tr>
+<td><code>RigVMVariableNode</code></td>
+<td>18</td>
+</tr>
+<tr>
+<td><code>RigVMRerouteNode</code></td>
+<td>4</td>
+</tr>
+<tr>
+<td><code>RigVMDispatchNode</code> (<code>If</code>)</td>
+<td>1</td>
+</tr>
+<tr>
+<td><code>RigVMFunctionReferenceNode</code> (<code>FootTrace</code>)</td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<p>이름 충돌이 있어 다음 두 노드만 명시: <code>FootTrace</code>, <code>FootTrace_1</code> (좌/우 호출).</p>
+<hr>
+<h2 id="7-ik_mage-ik-rig-현재-비활성">7. IK_Mage — IK Rig (현재 비활성) <a class="anchor" href="#7-ik_mage-ik-rig-현재-비활성">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Preview Mesh</td>
+<td><code>Mage</code></td>
+</tr>
+<tr>
+<td>Pelvis Bone</td>
+<td><code>None</code> (미지정)</td>
+</tr>
+<tr>
+<td>전체 본</td>
+<td>23</td>
+</tr>
+<tr>
+<td>Solver</td>
+<td>1 — <code>IKRigFullBodyIKSolver</code> (<code>hips</code> 시작, enabled)</td>
+</tr>
+<tr>
+<td>Goal</td>
+<td>4 — <code>hand_l_Goal</code>, <code>hand_r_Goal</code>, <code>foot_l_Goal</code>, <code>foot_r_Goal</code> (모두 connected)</td>
+</tr>
+<tr>
+<td>Retarget Chain</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>ABP_Mage AnimGraph 의 <code>IK Rig</code> 노드가 미연결이므로 본 솔버는 현재 어떤 포즈에도 영향을 주지 않는다. 살리는 방법은 <code>FootPlacement_Troubleshooting.md</code> §5 참고.</p>
+</blockquote>
+<hr>
+<h2 id="8-분석-메서드-재현용">8. 분석 메서드 (재현용) <a class="anchor" href="#8-분석-메서드-재현용">#</a></h2>
+<p>본 문서는 다음 Monolith MCP 호출들로 수집한 데이터를 바탕으로 작성됨.</p>
+<pre><code>animation_query / get_abp_info               (ABP_Mage)
+animation_query / get_abp_variables          (ABP_Mage)
+animation_query / get_abp_linked_assets      (ABP_Mage)
+animation_query / get_nodes                  (ABP_Mage, AnimGraph / EventGraph)
+blueprint_query / get_graph_data             (ABP_Mage, AnimGraph)
+blueprint_query / get_graph_data             (ABP_Mage, EventGraph)
+
+animation_query / get_ikrig_info             (IK_Mage)
+
+animation_query / get_control_rig_info       (CR_Mage_FootIK)
+animation_query / get_control_rig_variables  (CR_Mage_FootIK)
+animation_query / get_control_rig_graph      (CR_Mage_FootIK)
+blueprint_query / list_graphs                (CR_Mage_FootIK)
+blueprint_query / get_functions              (CR_Mage_FootIK)
+blueprint_query / get_graph_data             (CR_Mage_FootIK, FootTrace)
+
+animation_query / get_skeleton_info          (Mage_Skeleton)
+animation_query / get_sequence_info          (Idle_B)
+blueprint_query / get_cdo_properties         (BP_Mage)
+blueprint_query / get_components             (BP_Mage)
+</code></pre>
+<p>Control Rig 루트 그래프 응답이 대용량 단일 라인 JSON 으로 떨어져, 다음 보조 스크립트로 노드/링크/핀을 구조화해 정리함.</p>
+<ul>
+<li><code>Docs/Tools/dump_rig.py</code> — JSON 을 받아 노드/핀/링크를 사람이 읽을 수 있게 출력.</li>
+</ul>
+<hr>
+<h2 id="9-용어">9. 용어 <a class="anchor" href="#9-용어">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>약어 / 용어</th>
+<th>풀어쓰기 / 의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ABP</td>
+<td>Animation Blueprint</td>
+</tr>
+<tr>
+<td>CR</td>
+<td>Control Rig</td>
+</tr>
+<tr>
+<td>IK</td>
+<td>Inverse Kinematics</td>
+</tr>
+<tr>
+<td>FBIK</td>
+<td>Full Body IK (IK Rig 의 한 솔버 타입)</td>
+</tr>
+<tr>
+<td>PBIK</td>
+<td>Position-Based IK (Control Rig 의 한 솔버 노드, <code>RigUnit_PBIK</code>)</td>
+</tr>
+<tr>
+<td>VB (Virtual Bone)</td>
+<td>스켈레톤에 추가되는 “source 본 위치 + target 본까지의 상대 트랜스폼” 본</td>
+</tr>
+<tr>
+<td>AdditiveGlobal</td>
+<td><code>RigUnit_ModifyTransforms</code> 모드 중 하나. 글로벌 트랜스폼에 더함</td>
+</tr>
+<tr>
+<td><code>SequenceExecution</code></td>
+<td>실행 핀(A/B/C/D)을 순서대로 한 번씩 실행</td>
+</tr>
+</tbody>
+</table>
+  </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: prefersDark ? 'dark' : 'default',
+      flowchart: { htmlLabels: true, curve: 'basis' }
+    });
+  }
+</script>
+</body>
+</html>

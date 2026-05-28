@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CustomFootIK — Foot Placement Learning Docs</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf6;
+    --surface: #ffffff;
+    --fg: #1f1f1f;
+    --muted: #6a6a6a;
+    --accent: #5b3eaa;
+    --accent-soft: #efeaff;
+    --rule: #e6e2d8;
+    --shadow: 0 1px 2px rgba(20,20,20,.05), 0 4px 14px rgba(20,20,20,.06);
+    --shadow-hover: 0 4px 8px rgba(20,20,20,.08), 0 12px 28px rgba(20,20,20,.10);
+
+    --c-learning-bg:   #efeaff; --c-learning-fg:   #5b3eaa;
+    --c-reference-bg:  #e6f4ea; --c-reference-fg:  #1e6f3c;
+    --c-trouble-bg:    #fdecd6; --c-trouble-fg:    #9a5b00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14141a;
+      --surface: #1c1c25;
+      --fg: #e8e6e0;
+      --muted: #9a98a3;
+      --accent: #c3b3ff;
+      --accent-soft: #2a2440;
+      --rule: #2c2a35;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+      --shadow-hover: 0 4px 8px rgba(0,0,0,.5), 0 12px 28px rgba(0,0,0,.4);
+
+      --c-learning-bg:   #2a2247; --c-learning-fg:   #d2c2ff;
+      --c-reference-bg:  #1d3a26; --c-reference-fg:  #9ad8b1;
+      --c-trouble-bg:    #3a2a13; --c-trouble-fg:    #f3c181;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+  body {
+    font-family: "Pretendard", "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 56px 32px 96px; }
+
+  header { margin-bottom: 48px; }
+  header .eyebrow {
+    display: inline-block;
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  header h1 {
+    font-size: 2.4rem;
+    margin: 0 0 12px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  header p.lede {
+    font-size: 1.05rem;
+    color: var(--muted);
+    margin: 0;
+    max-width: 60ch;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    margin-bottom: 56px;
+  }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+    text-decoration: none;
+    color: inherit;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--accent);
+  }
+  .card .tag {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+    align-self: flex-start;
+  }
+  .card-learning  .tag { background: var(--c-learning-bg);  color: var(--c-learning-fg); }
+  .card-reference .tag { background: var(--c-reference-bg); color: var(--c-reference-fg); }
+  .card-trouble   .tag { background: var(--c-trouble-bg);   color: var(--c-trouble-fg); }
+  .card h2 {
+    margin: 0 0 6px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .card .sub {
+    margin: 0 0 18px;
+    color: var(--muted);
+    font-size: .92rem;
+  }
+  .card ul {
+    margin: 0 0 18px;
+    padding-left: 18px;
+    font-size: .9rem;
+    color: var(--fg);
+  }
+  .card ul li { margin: 4px 0; }
+  .card .open {
+    margin-top: auto;
+    font-weight: 600;
+    color: var(--accent);
+    font-size: .92rem;
+  }
+  .card .open::after { content: "  →"; }
+
+  .meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 760px) { .meta { grid-template-columns: 1fr; } }
+  .meta-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: .92rem;
+    color: var(--muted);
+  }
+  .meta-card strong { color: var(--fg); }
+  .meta-card a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed currentColor; }
+  .meta-card a:hover { border-bottom-style: solid; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+    font-size: .82rem;
+    color: var(--muted);
+  }
+  footer a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed currentColor; }
+  footer a:hover { border-bottom-style: solid; }
+  code {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: .88em;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">UE 5.7 · Foot Placement 학습 프로젝트</span>
+    <h1>CustomFootIK</h1>
+    <p class="lede">
+      Mage 캐릭터의 발이 경사면 · 계단 등 지면에 자연스럽게 정합되도록 만드는 Foot IK 시스템 구현과 학습 자료.
+      구현은 <strong>Skeleton 의 가상 본 + Control Rig (PBIK)</strong> 으로 동작하며, 같은 인프라 위에 IK Rig(FBIK) 경로로 갈아끼우는 학습 과제도 함께 다룬다.
+    </p>
+  </header>
+
+  <section class="grid">
+    <a class="card card-learning" href="FootPlacement_Learning.html">
+      <span class="tag">Learning</span>
+      <h2>처음 멘탈 모델 만들기</h2>
+      <p class="sub">Diataxis · tutorial + explanation</p>
+      <ul>
+        <li>학습 목표 + 한 화면 요약</li>
+        <li>선행 개념 · 가상 본 · 활성 경로</li>
+        <li>Control Rig 4 단계 (A · B · C · D)</li>
+        <li>검증 체크리스트</li>
+      </ul>
+      <span class="open">읽기 시작</span>
+    </a>
+
+    <a class="card card-reference" href="FootPlacement_ImplementationReference.html">
+      <span class="tag">Reference</span>
+      <h2>구현 측정값 SSOT</h2>
+      <p class="sub">Diataxis · reference</p>
+      <ul>
+        <li>에셋 · 코드 의존 관계</li>
+        <li>ABP / Control Rig / IK Rig 전체 노드 · 핀 · 파라미터</li>
+        <li>EventGraph 10 노드 분석</li>
+        <li>Monolith 호출 목록 (재현용)</li>
+      </ul>
+      <span class="open">레퍼런스 열기</span>
+    </a>
+
+    <a class="card card-trouble" href="FootPlacement_Troubleshooting.html">
+      <span class="tag">Troubleshooting</span>
+      <h2>결함 · 해결 · 확장</h2>
+      <p class="sub">Diataxis · how-to</p>
+      <ul>
+        <li>EventGraph 데드 체인</li>
+        <li>HitLocation.Z 단위 불일치</li>
+        <li>HitNormal 미사용 / 트레이스 채널</li>
+        <li>IK Rig 경로 살리기 단계별</li>
+      </ul>
+      <span class="open">문제 해결 열기</span>
+    </a>
+  </section>
+
+  <section class="meta">
+    <div class="meta-card">
+      <strong>엔진 / 도구</strong><br>
+      Unreal Engine 5.7 · Control Rig · IK Rig · Virtual Bones<br>
+      Monolith MCP 0.16.0 (에디터 인스펙션) · Python 3.14 (문서 빌드)
+    </div>
+    <div class="meta-card">
+      <strong>읽기 순서 권장</strong><br>
+      1. <code>Learning</code> 으로 멘탈 모델 형성<br>
+      2. <code>Troubleshooting</code> 으로 현재 결함 · 확장 과제 확인<br>
+      3. <code>Reference</code> 는 정확한 값이 필요할 때 펴 보기
+    </div>
+  </section>
+
+  <footer>
+    Source · build · CLAUDE notes:
+    <a href="https://github.com/bong9tutor/CustomFootIK">github.com/bong9tutor/CustomFootIK</a> ·
+    문서 빌드: <code>python Docs/Tools/md_to_html.py</code>
+  </footer>
+</div>
+</body>
+</html>
